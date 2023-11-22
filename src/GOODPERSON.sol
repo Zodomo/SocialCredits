@@ -1,15 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.22;
 
+// >>>>>>>>>>>> [ IMPORTS ] <<<<<<<<<<<<
+
 import "../lib/solady/src/tokens/ERC20.sol";
 import "../lib/solady/src/auth/Ownable.sol";
 import "./libraries/Structs.sol";
 
+/**
+ * @title GOODPERSON
+ * @notice A social good token programmatically distributable to those who do good things onchain.
+ * @author Zodomo.eth (Farcaster/Telegram/Discord/Github: @zodomo, X: @0xZodomo, Email: zodomo@proton.me)
+ * @custom:github https://github.com/Zodomo/GOODPERSON
+ */
 contract GOODPERSON is ERC20, Ownable {
+
+    // >>>>>>>>>>>> [ ERRORS ] <<<<<<<<<<<<
 
     error Locked();
     error Overflow();
     error Underflow();
+
+    // >>>>>>>>>>>> [ EVENTS ] <<<<<<<<<<<<
 
     event Unlocked(bool indexed _status);
     event SetAllocation(address indexed _minter, uint256 indexed _amount);
@@ -19,6 +31,8 @@ contract GOODPERSON is ERC20, Ownable {
     event AllocationMint(address indexed _minter, address indexed _to, uint256 indexed _amount);
     event Burn(address indexed _burner, uint256 indexed _amount);
 
+    // >>>>>>>>>>>> [ STORAGE VARIABLES ] <<<<<<<<<<<<
+
     string internal _name;
     string internal _symbol;
 
@@ -27,6 +41,10 @@ contract GOODPERSON is ERC20, Ownable {
     uint256 public maxSupply;
     bool public unlocked;
 
+    // >>>>>>>>>>>> [ MODIFIERS ] <<<<<<<<<<<<
+
+    /// @notice Prevents mint supply errors
+    /// @dev Allows owner to mint if enough unallocated supply, otherwise check caller allocation and adjust it
     modifier mintable(address _to, uint256 _amount) {
         if (msg.sender == owner()) {
             if (totalSupply() + totalAllocated + _amount > maxSupply) revert Overflow();
@@ -43,10 +61,13 @@ contract GOODPERSON is ERC20, Ownable {
         }
     }
 
+    /// @notice Restrict function to token holder or approved address, used only for burning
     modifier isApprovedOrHolder(address _from, uint256 _amount) {
         if (_from != msg.sender && allowance(_from, msg.sender) < _amount) revert Unauthorized();
         _;
     }
+
+    // >>>>>>>>>>>> [ CONSTRUCTOR ] <<<<<<<<<<<<
 
     constructor(
         string memory name_,
@@ -60,20 +81,33 @@ contract GOODPERSON is ERC20, Ownable {
         _initializeOwner(_owner);
     }
 
-    function name() public view override returns (string memory) {
-        return _name;
+    // >>>>>>>>>>>> [ METADATA / VIEW FUNCTIONS ] <<<<<<<<<<<<
+
+    /// @notice Metadata function for returning token name
+    /// @return name_ token name
+    function name() public view override returns (string memory name_) {
+        name_ = _name;
     }
     
-    function symbol() public view override returns (string memory) {
-        return _symbol;
+    /// @notice Metadata function for returning token symbol
+    /// @return symbol_ token symbol
+    function symbol() public view override returns (string memory symbol_) {
+        symbol_ = _symbol;
     }
 
+    // >>>>>>>>>>>> [ MANAGEMENT FUNCTIONS ] <<<<<<<<<<<<
+
+    /// @notice Toggle transaction lock on/off
     function toggleLock() external onlyOwner {
         bool status = !unlocked;
         unlocked = status;
         emit Unlocked(status);
     }
 
+    /// @notice Allocate supply to a specific address to mint
+    /// @dev Also used to reduce allocation as long as it doesn't go below what has been used
+    /// @param _minter approved minter
+    /// @param _allocation mintable token allocation
     function allocate(address _minter, uint256 _allocation) external onlyOwner {
         if (totalAllocated + _allocation + totalSupply() > maxSupply) revert Overflow();
         if (_allocation < allocations[_minter].used) revert Underflow();
@@ -87,26 +121,44 @@ contract GOODPERSON is ERC20, Ownable {
         emit SetAllocation(_minter, _allocation);
     }
 
+    /// @notice Reduce max supply
+    /// @dev Cannot reduce beneath sum of both minted and allocated supply
+    /// @param _maxSupply new max supply value
     function reduceMaxSupply(uint256 _maxSupply) external onlyOwner {
         if (_maxSupply < totalSupply() + totalAllocated) revert Underflow();
         maxSupply = _maxSupply;
         emit SupplyReduced(_maxSupply);
     }
 
+    // >>>>>>>>>>>> [ MINT / BURN FUNCTIONS ] <<<<<<<<<<<<
+
+    /// @notice Mint tokens to a recipient if caller is an approved minter
+    /// @dev owner() is always approved as long as supply allows, everyone else must have supply allocated
+    /// @param _to token recipient
+    /// @param _amount token quantity
     function mint(address _to, uint256 _amount) external mintable(_to, _amount) {
         _mint(_to, _amount);
     }
 
+    /// @notice Burn token supply
+    /// @dev Callable by approved addresses, also reduces maxSupply
+    /// @param _from address to burn from
+    /// @param _amount token amount to burn
     function burn(address _from, uint256 _amount) external isApprovedOrHolder(_from, _amount) {
         _burn(_from, _amount);
         unchecked { maxSupply -= _amount; }
         emit Burn(_from, _amount);
     }
 
+    // >>>>>>>>>>>> [ INTERNAL FUNCTIONS ] <<<<<<<<<<<<
+
+    /// @notice Pre-transfer hook to apply transfer lock and exempt mints and burns from it
+    /// @param _from sender address (address(0) for mints)
+    /// @param _to recipient address (address(0) for burns)
     function _beforeTokenTransfer(address _from, address _to, uint256) internal view override {
-        if (_to == address(0)) return;
-        if (_from != address(0)) {
-            if (_from != owner() && !unlocked) revert Locked();
-        }
+        // Revert when transfers are locked (mints/burns always exempt)
+        if (_from == address(0)) return; // mint exemption
+        if (_to == address(0)) return; // burn exemption
+        if (_from != owner() && !unlocked) revert Locked(); // Impose transfer lock on everyone but owner
     }
 }
