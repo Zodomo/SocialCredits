@@ -29,7 +29,8 @@ contract GOODPERSON is ERC20, Ownable {
 
     event OwnerMint(address indexed _to, uint256 indexed _amount);
     event AllocationMint(address indexed _minter, address indexed _to, uint256 indexed _amount);
-    event Burn(address indexed _burner, uint256 indexed _amount);
+    event Burned(address indexed _burner, uint256 indexed _amount);
+    event Forfeit(address indexed _forfeiter, uint256 indexed _amount);
 
     // >>>>>>>>>>>> [ STORAGE VARIABLES ] <<<<<<<<<<<<
 
@@ -154,7 +155,20 @@ contract GOODPERSON is ERC20, Ownable {
     function burn(address _from, uint256 _amount) external isApprovedOrHolder(_from, _amount) {
         _burn(_from, _amount);
         unchecked { maxSupply -= _amount; }
-        emit Burn(_from, _amount);
+        emit Burned(_from, _amount);
+    }
+
+    /// @notice Burn minted tokens and return to minter allocation
+    /// @dev Doesn't reduce maxSupply
+    /// @param _from address to forfeit from
+    /// @param _amount token amount to forfeit
+    function forfeit(address _from, uint256 _amount) external isApprovedOrHolder(_from, _amount) {
+        _burn(_from, _amount);
+        unchecked {
+            allocations[msg.sender].used -= _amount;
+            totalAllocated += _amount;
+        }
+        emit Forfeit(_from, _amount);
     }
 
     // >>>>>>>>>>>> [ INTERNAL FUNCTIONS ] <<<<<<<<<<<<
