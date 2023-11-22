@@ -2,14 +2,14 @@
 pragma solidity ^0.8.22;
 
 import {Test, console2} from "../lib/forge-std/src/Test.sol";
-import {GOODPERSON} from "../src/GOODPERSON.sol";
+import {SocialCredits} from "../src/SocialCredits.sol";
 
-contract GOODPERSONTest is Test {
-    GOODPERSON public token;
+contract SocialCreditsTest is Test {
+    SocialCredits public token;
     address public bobby = makeAddr("BOBBY");
 
     function setUp() public {
-        token = new GOODPERSON("GOOD PERSON", "GOODPERSON", 1_000_000_000 ether, address(this));
+        token = new SocialCredits("Zodomo's Social Credits", "ZSC", 1_000_000_000 ether, address(this));
     }
 
     function testGeneral() public {
@@ -30,7 +30,7 @@ contract GOODPERSONTest is Test {
         require(token.balanceOf(address(this)) == 900 ether, "balanceOf error");
         require(token.balanceOf(bobby) == 5_100 ether, "balanceOf error");
         vm.prank(bobby);
-        vm.expectRevert(GOODPERSON.Locked.selector);
+        vm.expectRevert(SocialCredits.Locked.selector);
         token.transfer(address(1), 100 ether);
         token.toggleLock();
         vm.prank(bobby);

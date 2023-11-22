@@ -8,12 +8,12 @@ import "../lib/solady/src/auth/Ownable.sol";
 import "./libraries/Structs.sol";
 
 /**
- * @title GOODPERSON
+ * @title SocialCredits
  * @notice A social good token programmatically distributable to those who do good things onchain.
  * @author Zodomo.eth (Farcaster/Telegram/Discord/Github: @zodomo, X: @0xZodomo, Email: zodomo@proton.me)
- * @custom:github https://github.com/Zodomo/GOODPERSON
+ * @custom:github https://github.com/Zodomo/SocialCredits
  */
-contract GOODPERSON is ERC20, Ownable {
+contract SocialCredits is ERC20, Ownable {
 
     // >>>>>>>>>>>> [ ERRORS ] <<<<<<<<<<<<
 

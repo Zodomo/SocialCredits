@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {Script, console2} from "../lib/forge-std/src/Script.sol";
 
-contract GOODPERSONScript is Script {
+contract SocialCreditsScript is Script {
     function setUp() public {}
 
     function run() public {
