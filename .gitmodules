@@ -4,9 +4,12 @@
 [submodule "lib/solady"]
 	path = lib/solady
 	url = https://github.com/vectorized/solady
-[submodule "lib/LayerZero"]
-	path = lib/LayerZero
-	url = https://github.com/LayerZero-Labs/LayerZero
-[submodule "lib/solidity-bytes-utils"]
-	path = lib/solidity-bytes-utils
-	url = https://github.com/GNSPS/solidity-bytes-utils
+[submodule "lib/v2-periphery"]
+	path = lib/v2-periphery
+	url = https://github.com/uniswap/v2-periphery
+[submodule "lib/v2-core"]
+	path = lib/v2-core
+	url = https://github.com/uniswap/v2-core
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts

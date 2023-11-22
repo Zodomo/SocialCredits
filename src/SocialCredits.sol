@@ -18,14 +18,16 @@ contract SocialCredits is ERC20, Ownable {
     // >>>>>>>>>>>> [ ERRORS ] <<<<<<<<<<<<
 
     error Locked();
+    error Invalid();
     error Overflow();
     error Underflow();
 
     // >>>>>>>>>>>> [ EVENTS ] <<<<<<<<<<<<
 
     event Unlocked(bool indexed _status);
-    event SetAllocation(address indexed _minter, uint256 indexed _amount);
     event SupplyReduced(uint256 indexed _maxSupply);
+    event SetLockExempt(address indexed _addr, bool indexed _status);
+    event SetAllocation(address indexed _minter, uint256 indexed _amount);
 
     event OwnerMint(address indexed _to, uint256 indexed _amount);
     event AllocationMint(address indexed _minter, address indexed _to, uint256 indexed _amount);
@@ -38,8 +40,11 @@ contract SocialCredits is ERC20, Ownable {
     string internal _symbol;
 
     mapping(address minter => Structs.Allocation allocation) public allocations;
+    mapping(address addr => bool isExempt) public lockExempt;
     uint256 public totalAllocated;
     uint256 public maxSupply;
+    address public router;
+    address public pair;
     bool public unlocked;
 
     // >>>>>>>>>>>> [ MODIFIERS ] <<<<<<<<<<<<
@@ -81,6 +86,7 @@ contract SocialCredits is ERC20, Ownable {
         _symbol = symbol_;
         maxSupply = _maxSupply;
         _initializeOwner(_owner);
+        lockExempt[_owner] = true;
     }
 
     // >>>>>>>>>>>> [ METADATA / VIEW FUNCTIONS ] <<<<<<<<<<<<
@@ -105,6 +111,17 @@ contract SocialCredits is ERC20, Ownable {
     }
 
     // >>>>>>>>>>>> [ MANAGEMENT FUNCTIONS ] <<<<<<<<<<<<
+
+    /// @notice Adjust transfer lock exemption for an address
+    /// @dev Must exempt Uniswap pair and router to remove liquidity and allow buys during lock
+    /// @param _addr exempted address
+    /// @param _status exemption status
+    function setLockExempt(address _addr, bool _status) external onlyOwner {
+        // Owner must always be exempt and is automatically managed
+        if (_addr == owner()) revert Invalid();
+        lockExempt[_addr] = _status;
+        emit SetLockExempt(_addr, _status);
+    }
 
     /// @notice Toggle transaction lock on/off
     function toggleLock() external onlyOwner {
@@ -172,7 +189,7 @@ contract SocialCredits is ERC20, Ownable {
         emit Forfeit(_from, _amount);
     }
 
-    // >>>>>>>>>>>> [ INTERNAL FUNCTIONS ] <<<<<<<<<<<<
+    // >>>>>>>>>>>> [ OVERRIDE FUNCTIONS ] <<<<<<<<<<<<
 
     /// @notice Pre-transfer hook to apply transfer lock and exempt mints and burns from it
     /// @param _from sender address (address(0) for mints)
@@ -181,6 +198,15 @@ contract SocialCredits is ERC20, Ownable {
         // Revert when transfers are locked (mints/burns always exempt)
         if (_from == address(0)) return; // mint exemption
         if (_to == address(0)) return; // burn exemption
-        if (_from != owner() && !unlocked) revert Locked(); // Impose transfer lock on everyone but owner
+        if (lockExempt[_from]) return; // specific address exemption (includes: owner, uniswap pair, uniswap router)
+        if (!unlocked) revert Locked(); // Impose transfer lock on everyone else if enabled
+    }
+
+    /// @dev _setOwner override to adjust owner transfer lock exemptions upon ownership transfers
+    /// @param _newOwner new owner address
+    function _setOwner(address _newOwner) internal override {
+        delete lockExempt[owner()];
+        if (_newOwner != address(0)) lockExempt[_newOwner] = true;
+        super._setOwner(_newOwner);
     }
 }
