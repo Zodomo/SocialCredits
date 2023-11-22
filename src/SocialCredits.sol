@@ -26,8 +26,9 @@ contract SocialCredits is ERC20, Ownable {
 
     event Unlocked(bool indexed _status);
     event SupplyReduced(uint256 indexed _maxSupply);
-    event SetLockExempt(address indexed _addr, bool indexed _status);
     event SetAllocation(address indexed _minter, uint256 indexed _amount);
+    event SetLockExemptSender(address indexed _addr, bool indexed _status);
+    event SetLockExemptRecipient(address indexed _addr, bool indexed _status);
 
     event OwnerMint(address indexed _to, uint256 indexed _amount);
     event AllocationMint(address indexed _minter, address indexed _to, uint256 indexed _amount);
@@ -40,7 +41,8 @@ contract SocialCredits is ERC20, Ownable {
     string internal _symbol;
 
     mapping(address minter => Structs.Allocation allocation) public allocations;
-    mapping(address addr => bool isExempt) public lockExempt;
+    mapping(address addr => bool isExempt) public lockExemptSender;
+    mapping(address addr => bool isExempt) public lockExemptRecipient;
     uint256 public totalAllocated;
     uint256 public maxSupply;
     address public router;
@@ -86,7 +88,7 @@ contract SocialCredits is ERC20, Ownable {
         _symbol = symbol_;
         maxSupply = _maxSupply;
         _initializeOwner(_owner);
-        lockExempt[_owner] = true;
+        lockExemptSender[_owner] = true;
     }
 
     // >>>>>>>>>>>> [ METADATA / VIEW FUNCTIONS ] <<<<<<<<<<<<
@@ -112,15 +114,26 @@ contract SocialCredits is ERC20, Ownable {
 
     // >>>>>>>>>>>> [ MANAGEMENT FUNCTIONS ] <<<<<<<<<<<<
 
-    /// @notice Adjust transfer lock exemption for an address
+    /// @notice Adjust transfer lock exemption for a sender address
     /// @dev Must exempt Uniswap pair and router to remove liquidity and allow buys during lock
     /// @param _addr exempted address
     /// @param _status exemption status
-    function setLockExempt(address _addr, bool _status) external onlyOwner {
+    function setLockExemptSender(address _addr, bool _status) external onlyOwner {
         // Owner must always be exempt and is automatically managed
         if (_addr == owner()) revert Invalid();
-        lockExempt[_addr] = _status;
-        emit SetLockExempt(_addr, _status);
+        lockExemptSender[_addr] = _status;
+        emit SetLockExemptSender(_addr, _status);
+    }
+
+    /// @notice Adjust transfer lock exemption for a recipient address
+    /// @dev Useful for exempting platform smart contracts to control how token is utilized
+    /// @param _addr exempted address
+    /// @param _status exemption status
+    function setLockExemptRecipient(address _addr, bool _status) external onlyOwner {
+        // Owner must always be exempt and is automatically managed
+        if (_addr == owner()) revert Invalid();
+        lockExemptRecipient[_addr] = _status;
+        emit SetLockExemptRecipient(_addr, _status);
     }
 
     /// @notice Toggle transaction lock on/off
@@ -198,15 +211,20 @@ contract SocialCredits is ERC20, Ownable {
         // Revert when transfers are locked (mints/burns always exempt)
         if (_from == address(0)) return; // mint exemption
         if (_to == address(0)) return; // burn exemption
-        if (lockExempt[_from]) return; // specific address exemption (includes: owner, uniswap pair, uniswap router)
+        if (lockExemptSender[_from]) return; // sender address exemption (includes: owner, uniswap pair, uniswap router)
+        if (lockExemptRecipient[_to]) return; // recipient exemption to allow platform-controlled token movement
         if (!unlocked) revert Locked(); // Impose transfer lock on everyone else if enabled
     }
 
     /// @dev _setOwner override to adjust owner transfer lock exemptions upon ownership transfers
     /// @param _newOwner new owner address
     function _setOwner(address _newOwner) internal override {
-        delete lockExempt[owner()];
-        if (_newOwner != address(0)) lockExempt[_newOwner] = true;
+        delete lockExemptSender[owner()];
+        delete lockExemptRecipient[owner()];
+        if (_newOwner != address(0)) {
+            lockExemptSender[_newOwner] = true;
+            lockExemptRecipient[_newOwner] = true;
+        }
         super._setOwner(_newOwner);
     }
 }

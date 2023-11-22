@@ -104,8 +104,8 @@ contract SocialCreditsTest is Test {
         vm.assume(_amountETH >= 0.0001 ether);
         vm.assume(_amountETH <= 100 ether);
         address pair = createPair();
-        token.setLockExempt(router, true);
-        token.setLockExempt(pair, true);
+        token.setLockExemptSender(router, true);
+        token.setLockExemptSender(pair, true);
         mintTokens(_amountToken);
         (,, uint256 liquidity) = addLiquidity(_amountToken, _amountETH);
         IERC20(pair).approve(router, liquidity);
@@ -119,8 +119,8 @@ contract SocialCreditsTest is Test {
         vm.assume(_amount <= 100 ether);
         vm.deal(bobby, 100 ether);
         address pair = createPair();
-        token.setLockExempt(router, true);
-        token.setLockExempt(pair, true);
+        token.setLockExemptSender(router, true);
+        token.setLockExemptSender(pair, true);
         mintTokens(100_000_000 ether);
         addLiquidity(100_000_000 ether, 100 ether);
         address[] memory path = new address[](2);
@@ -141,8 +141,8 @@ contract SocialCreditsTest is Test {
         vm.assume(_amount <= 100 ether);
         vm.deal(bobby, 100 ether);
         address pair = createPair();
-        token.setLockExempt(router, true);
-        token.setLockExempt(pair, true);
+        token.setLockExemptSender(router, true);
+        token.setLockExemptSender(pair, true);
         mintTokens(100_000_000 ether);
         addLiquidity(100_000_000 ether, 100 ether);
         address[] memory path = new address[](2);
