@@ -95,6 +95,13 @@ contract GOODPERSON is ERC20, Ownable {
         symbol_ = _symbol;
     }
 
+    /// @notice Return allocation for a given minter
+    /// @param _minter minter address
+    /// @return _allocation mint allocation
+    function getAllocation(address _minter) external view returns (uint256 _allocation) {
+        _allocation = allocations[_minter].allocated;
+    }
+
     // >>>>>>>>>>>> [ MANAGEMENT FUNCTIONS ] <<<<<<<<<<<<
 
     /// @notice Toggle transaction lock on/off
