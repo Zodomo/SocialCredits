@@ -70,7 +70,6 @@ contract SocialCredits is ERC20, OwnableRoles {
 
     /// @dev Restrict function to token holder or approved address, used only for burning
     modifier isApprovedOrHolder(address _from, uint256 _amount) {
-        uint256 tokenAllowance = allowance(_from, msg.sender);
         if (_from != msg.sender) _spendAllowance(_from, msg.sender, _amount);
         _;
     }
