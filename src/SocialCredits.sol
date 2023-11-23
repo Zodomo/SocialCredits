@@ -119,9 +119,11 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @param _minter approved minter
     /// @param _allocation mintable token allocation
     /// @custom:securitylevel 1
-    function allocate(address _minter, uint256 _allocation) external onlyOwnerOrRoles(1) {
+    function allocate(address _minter, uint256 _allocation) external onlyOwnerOrRoles(_ROLE_1) {
         if (totalAllocated + _allocation + totalSupply() > maxSupply) revert Overflow();
         if (_allocation < allocations[_minter].used) revert Underflow();
+        // Give minter forfeit() permissions
+        if (!hasAllRoles(_minter, _ROLE_7)) _grantRoles(_minter, _ROLE_7);
         uint256 existingAllocation = allocations[_minter].allocated;
         if (_allocation > existingAllocation) {
             unchecked { totalAllocated += _allocation - existingAllocation; }
@@ -134,7 +136,7 @@ contract SocialCredits is ERC20, OwnableRoles {
 
     /// @notice Toggle transaction lock on/off
     /// @custom:securitylevel 2
-    function toggleLock() external onlyOwnerOrRoles(2) {
+    function toggleLock() external onlyOwnerOrRoles(_ROLE_2) {
         bool status = !unlocked;
         unlocked = status;
         emit Unlocked(status);
@@ -144,7 +146,7 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @dev Cannot reduce beneath sum of both minted and allocated supply
     /// @param _amount max supply reduction amount
     /// @custom:securitylevel 3
-    function reduceMaxSupply(uint256 _amount) external onlyOwnerOrRoles(3) {
+    function reduceMaxSupply(uint256 _amount) external onlyOwnerOrRoles(_ROLE_3) {
         if (maxSupply - _amount < totalSupply() + totalAllocated) revert Underflow();
         unchecked { maxSupply -= _amount; }
         emit SupplyReduced(_amount);
@@ -155,7 +157,7 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @param _addr exempted address
     /// @param _status exemption status
     /// @custom:securitylevel 4
-    function setLockExemptSender(address _addr, bool _status) external onlyOwnerOrRoles(4) {
+    function setLockExemptSender(address _addr, bool _status) external onlyOwnerOrRoles(_ROLE_4) {
         // Owner must always be exempt and is automatically managed
         if (_addr == owner()) revert Invalid();
         if (_status) _grantRoles(_addr, _ROLE_5);
@@ -168,7 +170,7 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @param _addr exempted address
     /// @param _status exemption status
     /// @custom:securitylevel 4
-    function setLockExemptRecipient(address _addr, bool _status) external onlyOwnerOrRoles(4) {
+    function setLockExemptRecipient(address _addr, bool _status) external onlyOwnerOrRoles(_ROLE_4) {
         // Owner must always be exempt and is automatically managed
         if (_addr == owner()) revert Invalid();
         if (_status) _grantRoles(_addr, _ROLE_6);
@@ -201,11 +203,13 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @dev Doesn't reduce maxSupply
     /// @param _from address to forfeit from
     /// @param _amount token amount to forfeit
-    function forfeit(address _from, uint256 _amount) external isApprovedOrHolder(_from, _amount) {
+    function forfeit(address _from, uint256 _amount) external onlyOwnerOrRoles(_ROLE_0 | _ROLE_7) {
         _burn(_from, _amount);
-        unchecked {
-            allocations[msg.sender].used -= _amount;
-            totalAllocated += _amount;
+        if (_from != owner()) {
+            unchecked {
+                allocations[msg.sender].used -= _amount;
+                totalAllocated += _amount;
+            }
         }
         emit Forfeit(_from, _amount);
     }

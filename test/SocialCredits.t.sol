@@ -240,6 +240,9 @@ contract SocialCreditsTest is Test {
         vm.assume(_addr != address(factory));
         vm.assume(_amount >= 1 ether);
         vm.assume(_amount <= 100_000_000 ether);
+        vm.prank(_addr);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        token.toggleLock();
         token.grantRoles(_addr, _ROLE_0);
         token.grantRoles(_addr, _ROLE_1);
         token.grantRoles(_addr, _ROLE_2);
