@@ -121,8 +121,9 @@ contract SocialCredits is ERC20, OwnableRoles {
     function allocate(address _minter, uint256 _allocation) external onlyOwnerOrRoles(_ROLE_1) {
         if (totalAllocated + _allocation + totalSupply() > maxSupply) revert Overflow();
         if (_allocation < allocations[_minter].used) revert Underflow();
-        // Give minter forfeit() permissions
+        // Give or remove minter forfeit() permissions
         if (!hasAllRoles(_minter, _ROLE_7)) _grantRoles(_minter, _ROLE_7);
+        if (_allocation == 0) _removeRoles(_minter, _ROLE_7);
         uint256 existingAllocation = allocations[_minter].allocated;
         if (_allocation > existingAllocation) {
             unchecked { totalAllocated += _allocation - existingAllocation; }
@@ -204,7 +205,7 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @param _amount token amount to forfeit
     function forfeit(address _from, uint256 _amount) external onlyOwnerOrRoles(_ROLE_0 | _ROLE_7) {
         _burn(_from, _amount);
-        if (_from != owner()) {
+        if (hasAllRoles(_from, _ROLE_7)) {
             unchecked {
                 allocations[msg.sender].used -= _amount;
                 totalAllocated += _amount;
