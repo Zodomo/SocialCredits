@@ -91,7 +91,7 @@ SocialCredits was designed using Foundry, so I recommend familiarizing yourself 
 
 ### Installation
 
-1. Set up your NFT project using Foundry
+1. Set up your ERC20 project using Foundry
    ```sh
    forge init ProjectName
    ```
