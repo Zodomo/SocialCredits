@@ -27,6 +27,7 @@ contract SocialCredits is ERC20, OwnableRoles {
     event Unlocked(bool indexed _status);
     event SupplyReduced(uint256 indexed _maxSupply);
     event SetAllocation(address indexed _minter, uint256 indexed _amount);
+    event AllocationReached(address indexed _minter, uint256 indexed _allocation);
     event SetLockExemptSender(address indexed _addr, bool indexed _status);
     event SetLockExemptRecipient(address indexed _addr, bool indexed _status);
 
@@ -58,13 +59,23 @@ contract SocialCredits is ERC20, OwnableRoles {
             _;
             emit OwnerMint(_to, _amount);
         } else {
-            if (allocations[msg.sender].allocated - allocations[msg.sender].used < _amount) revert Unauthorized();
-            unchecked {
-                allocations[msg.sender].used += _amount;
-                totalAllocated -= _amount;
+            uint256 allocation = allocations[msg.sender].allocated;
+            uint256 remainder = allocation - allocations[msg.sender].used;
+            // Prevent reverts downstream if allocation is fully utilized by simply returning
+            if (remainder == 0) return;
+            else {
+                // If _amount is over remaining allocation, mint remainder
+                if (_amount >= remainder) {
+                    _amount = remainder;
+                    emit AllocationReached(msg.sender, allocation);
+                }
+                unchecked {
+                    allocations[msg.sender].used += _amount;
+                    totalAllocated -= _amount;
+                }
+                _;
+                emit AllocationMint(msg.sender, _to, _amount);
             }
-            _;
-            emit AllocationMint(msg.sender, _to, _amount);
         }
     }
 
@@ -181,7 +192,8 @@ contract SocialCredits is ERC20, OwnableRoles {
     // >>>>>>>>>>>> [ MINT / BURN FUNCTIONS ] <<<<<<<<<<<<
 
     /// @notice Mint tokens to a recipient if caller is an approved minter
-    /// @dev owner() is always approved as long as supply allows, everyone else must have supply allocated
+    /// @dev owner() is always approved as long as supply allows, everyone else must have supply allocated.
+    /// Always returns, even if mint doesn't succeed!
     /// @param _to token recipient
     /// @param _amount token quantity
     /// @custom:securitylevel 0
