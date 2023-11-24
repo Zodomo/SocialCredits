@@ -50,14 +50,14 @@ contract SocialCredits is ERC20, OwnableRoles {
 
     // >>>>>>>>>>>> [ MODIFIERS ] <<<<<<<<<<<<
 
-    /// @notice Prevents mint supply errors
-    /// @dev Allows owner or role 0 to mint if enough unallocated supply, otherwise check caller allocation and adjust it
+    /// @notice Prevents mint supply errors and doesn't revert if nothing can be minted
+    /// @dev Allows privileged minters to mint according to their allocation or permissions
     /// @custom:securitylevel 0
     modifier mintable(address _to, uint256 _amount) {
+        if (_amount == 0) return;
         if (msg.sender == owner() || hasAllRoles(msg.sender, _ROLE_0)) {
             if (totalSupply() + totalAllocated + _amount > maxSupply) revert Overflow();
             _;
-            emit OwnerMint(_to, _amount);
         } else {
             uint256 allocation = allocations[msg.sender].allocated;
             uint256 remainder = allocation - allocations[msg.sender].used;
@@ -74,7 +74,6 @@ contract SocialCredits is ERC20, OwnableRoles {
                     totalAllocated -= _amount;
                 }
                 _;
-                emit AllocationMint(msg.sender, _to, _amount);
             }
         }
     }
@@ -199,6 +198,8 @@ contract SocialCredits is ERC20, OwnableRoles {
     /// @custom:securitylevel 0
     function mint(address _to, uint256 _amount) external mintable(_to, _amount) {
         _mint(_to, _amount);
+        if (hasAllRoles(msg.sender, _ROLE_7)) emit AllocationMint(msg.sender, _to, _amount);
+        else emit OwnerMint(_to, _amount);
     }
 
     /// @notice Burn token supply
